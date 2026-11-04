@@ -376,7 +376,7 @@ const PROVIDER_DEFAULT = 'partial';
 
 const CHOICE_DESC = {
   provider:{
-    full:"Share all data with the member's treating in-network providers, including behavioral health / substance use treatment (42 CFR Part 2) and other specially protected data.",
+    full:"Share all data with the in-network providers involved in the member's care, including behavioral health / substance use treatment (42 CFR Part 2) and other specially protected data.",
     partial:'Share all data except behavioral health / substance use treatment and specially protected data.',
     none:'Do not share data with providers.'
   },
@@ -393,7 +393,7 @@ const STATE_NOTICE = {
 };
 function fullConsentText(kind, planName){
   return kind==='provider'
-    ? `By choosing Full, you allow Jefferson Health Plans to share all of your health information with the in-network providers who are treating you, for ${PURPOSES}. This includes behavioral health and substance use treatment records protected by federal law (42 CFR Part 2) and other specially protected information. You can change this choice at any time.`
+    ? `By choosing Full, you allow Jefferson Health Plans to share all of your health information with the in-network providers involved in your care, for ${PURPOSES}. This includes behavioral health and substance use treatment records protected by federal law (42 CFR Part 2) and other specially protected information. You can change this choice at any time.`
     : `By choosing Full, you allow Jefferson Health Plans to request all of your health information from ${planName||'your previous health plan'}, for ${PURPOSES}. This includes behavioral health and substance use treatment records protected by federal law (42 CFR Part 2) and other specially protected information. You can change this choice at any time.`;
 }
 
