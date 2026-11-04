@@ -380,7 +380,8 @@ const CHOICE_LABEL = { full:'All information', partial:'All except sensitive inf
 const CHOICE_DOT   = { full:'green', partial:'blue', none:'red', 'not-asked':'grey', expired:'amber' };
 const DOT_HEX      = { green:'#2fb24a', blue:'#2b62b8', red:'#df322e', grey:'#9aa0ab', amber:'#c98a00' };
 const P2P_GROUPS   = ['full','partial','none','not-asked','expired'];
-const PURPOSES = 'treatment, payment and operations';
+const PURPOSES = 'treatment, payment and operations';          // Provider Access
+const PURPOSES_P2P = 'treatment and health care operations';    // Payer-to-Payer: data from other plans is used clinically and for operations, not for payment (K 11-04)
 const CAPTURED_BY = 'Member services';
 const PROVIDER_DEFAULT = 'partial';
 
@@ -404,8 +405,8 @@ const STATE_NOTICE = {
 /* Read-aloud consent text for All information: short sentences a member services rep can read on the phone. */
 function fullConsentText(kind, planName){
   return kind==='provider'
-    ? `You are choosing to share all of your information. Jefferson Health Plans will share all of your health information with the in-network providers involved in your care, when they request it. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We share this information only for ${PURPOSES}. You can change your choice at any time.`
-    : `You are choosing to request all of your information. Jefferson Health Plans will ask ${planName||'your previous health plan'} for all of your health information. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We use this information only for ${PURPOSES}. You can change your choice at any time.`;
+    ? `You are choosing to share all of your information. Jefferson Health Plans will share all of your health information with the in-network providers involved in your care, when they request it. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We may share this information for ${PURPOSES}. You can change your choice at any time.`
+    : `You are choosing to request all of your information. Jefferson Health Plans will ask ${planName||'your previous health plan'} for all of your health information. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We may use this information for your treatment and for our health care operations. You can change your choice at any time.`;
 }
 
 /* ---------- Data ---------- */
@@ -733,7 +734,7 @@ function planCard(p){
         <tr><td class="k">Last date data transfer was initiated</td><td class="v">${esc(p.transfer)}</td></tr>
         <tr><td class="k">Status of transfer</td><td class="v">${transferPill(p.status)}</td></tr>
       </table>
-      <p class="purposes"><b>Purposes:</b> ${PURPOSES}</p>
+      <p class="purposes"><b>Purposes:</b> ${PURPOSES_P2P}</p>
       ${choicesFieldset({name:'plan-'+p.id, legend:`Change the choice for ${p.name}`, kind:'p2p', current:p.group, draft,
           action:'plan-choice', dataAttr:`data-id="${p.id}"`, tour:'plan-choices'})}
       ${historyBlock(p.history,'No choice recorded yet.')}
@@ -820,7 +821,7 @@ function viewTransfer(){
     </div>
 
     ${sel.length? `<div data-tour="transfer-choices" style="max-width:940px">
-      <p class="purposes"><b>Purposes:</b> ${PURPOSES}</p>
+      <p class="purposes"><b>Purposes:</b> ${PURPOSES_P2P}</p>
       ${sel.map(nm=>choicesFieldset({name:'tc-'+slug(nm), legend:`${nm}: what should we request?`, kind:'p2p', current:null,
           draft:state.transferChoice[nm], action:'transfer-choice', dataAttr:`data-name="${esc(nm)}"`})
         + (state.transferChoice[nm]==='full' ? readout('p2p', nm) : '')).join('')}
@@ -876,7 +877,7 @@ function footnote(){
   return `<div class="footnote">Demonstration portal for Jefferson Health Plans customer-service training.
    Implements member data-sharing consent under CMS-0057 (CMS Interoperability &amp; Prior Authorization Final Rule):
    Provider Access (opt-out; All information / All except sensitive information / No information, default All except sensitive information) and Payer-to-Payer (opt-in; All information / All except sensitive information / No information for each previous plan).
-   Purposes: ${PURPOSES}. No real member data is shown.</div>`;
+   Purposes: Provider Access, ${PURPOSES}; Payer-to-Payer, ${PURPOSES_P2P}. No real member data is shown.</div>`;
 }
 
 /* ---------- Modals ---------- */
@@ -890,7 +891,7 @@ function modalPlanChoice(planId, choice){
     : choice==='partial'
       ? `<p class="left" style="margin-top:14px">If this choice is saved:</p>
          <ul><li>We will request all data from this plan except behavioral health / substance use treatment and specially protected data</li>
-             <li>Purposes: ${PURPOSES}</li></ul>`
+             <li>Purposes: ${PURPOSES_P2P}</li></ul>`
       : `<p class="left" style="margin-top:14px">If this choice is saved:</p>
          <ul><li>We will not request new health data from this plan</li>
              <li>Data already received remains unchanged</li></ul>
