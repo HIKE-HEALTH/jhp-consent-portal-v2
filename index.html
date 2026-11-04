@@ -380,8 +380,8 @@ const CHOICE_LABEL = { full:'All information', partial:'All except sensitive inf
 const CHOICE_DOT   = { full:'green', partial:'blue', none:'red', 'not-asked':'grey', expired:'amber' };
 const DOT_HEX      = { green:'#2fb24a', blue:'#2b62b8', red:'#df322e', grey:'#9aa0ab', amber:'#c98a00' };
 const P2P_GROUPS   = ['full','partial','none','not-asked','expired'];
-const PURPOSES = 'treatment, payment and operations';          // Provider Access
-const PURPOSES_P2P = 'treatment and health care operations';    // Payer-to-Payer: data from other plans is used clinically and for operations, not for payment (K 11-04)
+const PURPOSES = 'treatment and health care operations';        // K 11-04: no payment purpose (both provisions)
+const PURPOSES_P2P = PURPOSES;
 const CAPTURED_BY = 'Member services';
 const PROVIDER_DEFAULT = 'partial';
 
@@ -405,7 +405,7 @@ const STATE_NOTICE = {
 /* Read-aloud consent text for All information: short sentences a member services rep can read on the phone. */
 function fullConsentText(kind, planName){
   return kind==='provider'
-    ? `You are choosing to share all of your information. Jefferson Health Plans will share all of your health information with the in-network providers involved in your care, when they request it. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We may share this information for ${PURPOSES}. You can change your choice at any time.`
+    ? `You are choosing to share all of your information. Jefferson Health Plans will share all of your health information with the in-network providers involved in your care, when they request it. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We may share this information for your treatment and for health care operations. You can change your choice at any time.`
     : `You are choosing to request all of your information. Jefferson Health Plans will ask ${planName||'your previous health plan'} for all of your health information. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We may use this information for your treatment and for our health care operations. You can change your choice at any time.`;
 }
 
@@ -877,7 +877,7 @@ function footnote(){
   return `<div class="footnote">Demonstration portal for Jefferson Health Plans customer-service training.
    Implements member data-sharing consent under CMS-0057 (CMS Interoperability &amp; Prior Authorization Final Rule):
    Provider Access (opt-out; All information / All except sensitive information / No information, default All except sensitive information) and Payer-to-Payer (opt-in; All information / All except sensitive information / No information for each previous plan).
-   Purposes: Provider Access, ${PURPOSES}; Payer-to-Payer, ${PURPOSES_P2P}. No real member data is shown.</div>`;
+   Purposes: ${PURPOSES}. No real member data is shown.</div>`;
 }
 
 /* ---------- Modals ---------- */
@@ -1168,7 +1168,7 @@ const TOUR = {
         title:'Step 2 — Select All information', body:'The rep selects <b>All information</b>. The screen now shows the text the rep must read to the member before confirming.' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='full'; state.view='provider'; render(); },
         sel:'[data-tour="readout-text"]', place:'top',
-        title:'Step 3 — Read the consent text', body:'The rep reads this to the member: what All information shares, with whom, and for which purposes (treatment, payment and operations).' },
+        title:'Step 3 — Read the consent text', body:'The rep reads this to the member: what All information shares, with whom, and for which purposes (treatment and health care operations).' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='full'; state.view='provider'; render(); },
         sel:'[data-tour="readout-notice"]', place:'top',
         title:'Step 4 — Read the state law notice', body:'Some information has extra protection under state law: HIV-related information, and genetic information for New Jersey members. The rep reads this notice so the member knows that information is shared only with the provider&rsquo;s separate written permission.' },
