@@ -89,7 +89,7 @@
   .dot.grey{background:var(--muted-2)}
   .pill-group{display:inline-flex;flex-wrap:wrap;gap:6px 14px}
 
-  /* three-choice consent radios (Full / Partial / None) */
+  /* three-choice consent radios (All information / All except sensitive information / No information) */
   .choices{border:0;margin:0 0 20px;padding:0;min-width:0;display:flex;flex-direction:column;gap:10px}
   .choices legend{font-weight:700;font-size:15px;color:#2b303b;padding:0;margin-bottom:10px}
   .choice{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:#fff;cursor:pointer;transition:.12s}
@@ -103,7 +103,7 @@
   .purposes{font-size:14px;color:#3a414f;margin:0 0 16px}
   .purposes b{color:#2b303b}
 
-  /* read-aloud consent text shown for Full */
+  /* read-aloud consent text shown for All information */
   .readout{border:1px solid #ecd6e6;border-left:4px solid var(--accent);background:var(--accent-soft-2);border-radius:12px;padding:16px 20px;margin:0 0 20px;text-align:left}
   .readout .rk{font-size:12px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
   .readout .rh{font-size:13px;font-weight:700;color:#2b303b;margin:12px 0 4px}
@@ -218,6 +218,13 @@
   .toggle-card p{margin:0;color:#3a414f;font-size:15px;line-height:1.5}
   .toggle-card .note{color:var(--muted);font-size:14px;margin-top:14px}
   .attest-row{margin:8px 0 24px}
+  .optout-warn{border-left:4px solid #c98a00;background:#fff8e6;color:#4a3b10;padding:12px 16px;border-radius:6px;margin:4px 0 16px;font-size:15px;line-height:1.45}
+  .optout-warn b{display:block;margin-bottom:4px}
+  .optout-warn ol{margin:6px 0 0 20px;padding:0}
+  .given-by{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:4px 0 14px;font-size:15px;color:#2c3340}
+  .given-by label{font-weight:600}
+  .given-by select{font:inherit;padding:6px 10px;border:1px solid #c9ced8;border-radius:6px;background:#fff;color:#2c3340;min-width:220px}
+  .modal .given-by{justify-content:center;margin-top:16px}
   .form-actions{display:flex;gap:14px;align-items:center}
 
   /* dropdown multiselect */
@@ -366,7 +373,7 @@ const ICON = {
      or 'not-asked' (no default) or 'expired'.
    Every change appends { choice, date, by } to that consent's history. */
 const CHOICES = ['full','partial','none'];
-const CHOICE_LABEL = { full:'Full', partial:'Partial', none:'None', 'not-asked':'Not asked', expired:'Expired' };
+const CHOICE_LABEL = { full:'All information', partial:'All except sensitive information', none:'No information', 'not-asked':'Not asked', expired:'Expired' };
 const CHOICE_DOT   = { full:'green', partial:'blue', none:'red', 'not-asked':'grey', expired:'amber' };
 const DOT_HEX      = { green:'#2fb24a', blue:'#2b62b8', red:'#df322e', grey:'#9aa0ab', amber:'#c98a00' };
 const P2P_GROUPS   = ['full','partial','none','not-asked','expired'];
@@ -386,26 +393,27 @@ const CHOICE_DESC = {
     none:'Do not request data from this plan.'
   }
 };
-/* State carve-out notice, read out with Full. Starting language; the plan's language owners will refine it. */
+/* State carve-out notice, read out with All information. Starting language; the plan's language owners will refine it. */
 const STATE_NOTICE = {
-  provider:'One more thing: some information also has extra protection under state law. This is HIV-related information, and for New Jersey members, genetic information. We share that information only if your provider sends us your separate written permission.',
-  p2p:'One more thing: some information also has extra protection under state law. This is HIV-related information, and for New Jersey members, genetic information. We share that information with others only if your provider sends us your separate written permission.'
+  provider:'One more thing: some information also has extra protection under state law. Under Pennsylvania law, this is HIV-related information. Under New Jersey law, it is HIV-related information and genetic information. We share that information only if your provider sends us your separate written permission.',
+  p2p:'One more thing: some information also has extra protection under state law. Under Pennsylvania law, this is HIV-related information. Under New Jersey law, it is HIV-related information and genetic information. We share that information with others only if your provider sends us your separate written permission.'
 };
-/* Read-aloud consent text for Full: short sentences a member services rep can read on the phone. */
+/* Read-aloud consent text for All information: short sentences a member services rep can read on the phone. */
 function fullConsentText(kind, planName){
   return kind==='provider'
-    ? `You are choosing Full. Jefferson Health Plans will share all of your health information with the in-network providers involved in your care, when they request it. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We share this information only for ${PURPOSES}. You can change your choice at any time.`
-    : `You are choosing Full. Jefferson Health Plans will ask ${planName||'your previous health plan'} for all of your health information. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We use this information only for ${PURPOSES}. You can change your choice at any time.`;
+    ? `You are choosing to share all of your information. Jefferson Health Plans will share all of your health information with the in-network providers involved in your care, when they request it. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We share this information only for ${PURPOSES}. You can change your choice at any time.`
+    : `You are choosing to request all of your information. Jefferson Health Plans will ask ${planName||'your previous health plan'} for all of your health information. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We use this information only for ${PURPOSES}. You can change your choice at any time.`;
 }
 
 /* ---------- Data ---------- */
-function hist(choice,date){ return { choice, date, by:CAPTURED_BY }; }
+const GIVEN_BY = ['Member','Personal representative','Related person'];
+function hist(choice,date,givenBy){ return { choice, date, by:CAPTURED_BY, givenBy: givenBy||'Member' }; }
 function freshMembers(){
   return {
     '123456': {
       id:'123456', name:'John Doe', first:'John', poss:'his', subj:'he',
       phone:'(215) 555-0142', dob:'05/22/1985', email:'johndoe@gmail.com',
-      provider:{ status:'partial', chosen:false, history:[] },   // Provider Access: never chosen, so the default (Partial) applies
+      provider:{ status:'partial', chosen:false, history:[] },   // Provider Access: never chosen, so the default (All except sensitive information) applies
       plans:[
         { id:'aetna',   name:'Aetna',   group:'full',      chosen:'May 5, 2025', transfer:'May 7, 2025', status:'Completed',   history:[hist('full','May 5, 2025')] },
         { id:'cigna',   name:'Cigna',   group:'partial',   chosen:'May 5, 2025', transfer:'May 7, 2025', status:'Completed',   history:[hist('partial','May 5, 2025')] },
@@ -445,7 +453,8 @@ const state = {
   ddOpen:false,
   transferSel:[],           // selected plan names
   transferChoice:{},        // plan name -> 'full'|'partial'|'none'
-  transferAttest:false
+  transferAttest:false,
+  givenBy:'Member'          // who gave the preference: Member | Personal representative | Related person
 };
 let MEMBERS = freshMembers();
 let PLAN_SEQ = 0;
@@ -474,11 +483,11 @@ function transferPill(status){
 function attestText(choice){
   if(!choice) return 'I confirm that the member explicitly requested this change during this interaction.';
   return choice==='full'
-    ? 'I confirm that the member explicitly requested this change to Full during this interaction, after I read them the consent text above.'
+    ? 'I confirm that the member explicitly requested this change to All information during this interaction, after I read them the consent text above.'
     : `I confirm that the member explicitly requested this change to ${CHOICE_LABEL[choice]} during this interaction.`;
 }
 
-/* Full / Partial / None radio group (real radios, keyboard-usable) */
+/* All information / All except sensitive information / No information radio group (real radios, keyboard-usable) */
 function choicesFieldset(o){
   const sel = o.draft || (CHOICES.includes(o.current)?o.current:null);
   return `<fieldset class="choices" ${o.tour?`data-tour="${o.tour}"`:''}>
@@ -490,7 +499,12 @@ function choicesFieldset(o){
     </label>`).join('')}
   </fieldset>`;
 }
-/* the text the rep reads to the member when Full is selected */
+/* who gave the preference (the member, or someone acting for them) */
+function givenByField(id){
+  return `<div class="given-by" data-tour="given-by"><label for="given-by-${id}">Preference given by</label>
+    <select id="given-by-${id}" data-action="given-by">${GIVEN_BY.map(g=>`<option ${state.givenBy===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div>`;
+}
+/* the text the rep reads to the member when All information is selected */
 function readout(kind, planName){
   return `<div class="readout" data-readout="${kind}">
     <div class="rk">Read this to the member before you confirm</div>
@@ -501,8 +515,8 @@ function readout(kind, planName){
 function historyBlock(entries, emptyMsg){
   return `<div class="history" data-tour="history"><h4>Consent history</h4>
     ${entries.length
-      ? `<table><thead><tr><th>Date</th><th>Choice</th><th>Captured by</th></tr></thead><tbody>
-          ${entries.slice().reverse().map(e=>`<tr><td>${esc(e.date)}</td><td>${pill(e.choice)}</td><td>${esc(e.by)}</td></tr>`).join('')}
+      ? `<table><thead><tr><th>Date</th><th>Choice</th><th>Preference given by</th><th>Captured by</th></tr></thead><tbody>
+          ${entries.slice().reverse().map(e=>`<tr><td>${esc(e.date)}</td><td>${pill(e.choice)}</td><td>${esc(e.givenBy||'Member')}</td><td>${esc(e.by)}</td></tr>`).join('')}
         </tbody></table>`
       : `<div class="empty">${esc(emptyMsg)}</div>`}
   </div>`;
@@ -511,15 +525,16 @@ function historyBlock(entries, emptyMsg){
 /* ---------- Consent changes (single place, used by the UI and the tour) ---------- */
 function setProviderChoice(m, choice){
   m.provider.status=choice; m.provider.chosen=true;
-  m.provider.history.push(hist(choice,today()));
+  m.provider.history.push(hist(choice,today(),state.givenBy));
 }
 function providerToast(choice){
-  toast('Consent updated', `Share with providers is now ${CHOICE_LABEL[choice].toUpperCase()}.`, choice==='none'?'red':'');
+  state.givenBy='Member';   // the next change starts from Member again
+  toast('Consent updated', `Share with providers is now ${CHOICE_LABEL[choice]}.`, choice==='none'?'red':'');
 }
 function setPlanChoice(p, choice){
   p.group=choice; p.chosen=today();
   if(choice!=='none' && p.status==='Not started'){ p.transfer='Pending'; p.status='In progress'; }
-  p.history.push(hist(choice,today()));
+  p.history.push(hist(choice,today(),state.givenBy));
 }
 function applyTransfer(m, names, choices){
   names.forEach(nm=>{
@@ -531,7 +546,8 @@ function applyTransfer(m, names, choices){
   });
 }
 function transferToast(names, choices){
-  const msg = names.map(n=>`${n}: ${CHOICE_LABEL[choices[n]].toUpperCase()}`).join('; ');
+  state.givenBy='Member';
+  const msg = names.map(n=>`${n}: ${CHOICE_LABEL[choices[n]]}`).join('; ');
   const anyRequest = names.some(n=>choices[n]!=='none');
   toast(anyRequest?'Transfer requested':'Consent updated', `Payer-to-Payer choice recorded. ${msg}.`, anyRequest?'':'red');
 }
@@ -666,7 +682,7 @@ function viewProfile(){
     <div class="consent-card" data-tour="provider-consent">
       <div class="ct">
         <h3>Share data with healthcare providers</h3>
-        <p>Manage how ${esc(m.name)}'s health information is shared with in-network providers: Full, Partial or None.</p>
+        <p>Manage how ${esc(m.name)}'s health information is shared with in-network providers: All information, All except sensitive information or No information.</p>
       </div>
       <div class="right">
         <span id="provider-status">${providerPill(m)}</span>
@@ -677,7 +693,7 @@ function viewProfile(){
     <div class="consent-card" data-tour="transfer-consent">
       <div class="ct">
         <h3>Transfer data from other health plans</h3>
-        <p>Manage how ${esc(m.name)}'s health information is transferred from other health plans: Full, Partial or None for each previous plan.</p>
+        <p>Manage how ${esc(m.name)}'s health information is transferred from other health plans: All information, All except sensitive information or No information for each previous plan.</p>
       </div>
       <div class="right">
         <span class="pill-group" id="p2p-summary">${p2pSummary || pill('not-asked')}</span>
@@ -733,7 +749,7 @@ function planCard(p){
   </div>`;
 }
 
-/* ---------- Provider consent (opt-out model, default Partial) ---------- */
+/* ---------- Provider consent (opt-out model, default All except sensitive information) ---------- */
 function viewProvider(){
   const m=member();
   const cur = m.provider.status;
@@ -752,10 +768,12 @@ function viewProvider(){
         <p class="purposes" style="margin-top:6px"><b>Purposes:</b> ${PURPOSES}</p>
         ${choicesFieldset({name:'provider-choice', legend:`Provider Access choice for ${m.name}`, srLegend:true, kind:'provider', current:cur,
             draft:state.providerDraft, action:'provider-choice', tour:'provider-choices', defaultBadge:true})}
-        <div class="note">Provider Access is on by default: a member who has never chosen is shared at Partial. ${esc(m.name)} can change this choice at any time.</div>
+        <div class="note">Provider Access is on by default: a member who has never chosen is on All except sensitive information. ${esc(m.name)} can change this choice at any time.</div>
       </div>
     </div>
     ${draft==='full' ? readout('provider') : ''}
+    ${draft==='none' ? `<div class="optout-warn" data-warn="provider"><b>Important</b>This means the member's health information will no longer be shared with their in-network providers. This may affect care quality and result in duplicate testing.</div>` : ''}
+    ${givenByField('provider')}
     <div class="attest-row" data-tour="provider-attest">
       <label class="chk">
         <input type="checkbox" ${state.providerAttest?'checked':''} data-action="provider-attest" />
@@ -766,7 +784,7 @@ function viewProvider(){
     <div class="form-actions">
       <button class="btn ${can?'btn-primary':'btn-disabled'}" data-action="provider-confirm" data-tour="provider-confirm" ${can?'':'disabled'}>Confirm</button>
     </div>
-    ${historyBlock(m.provider.history,'No choice recorded. The default (Partial) applies.')}
+    ${historyBlock(m.provider.history,'No choice recorded. The default (All except sensitive information) applies.')}
     ${footnote()}
   `);
 }
@@ -784,7 +802,7 @@ function viewTransfer(){
       <h1>Transfer data from other health plans</h1>
     </div>
     <h2 class="section" style="margin-top:4px">Which health plans should we request data from?</h2>
-    <p class="sub">Select a health plan to update or start data transfer, then record the member's choice for each plan: Full, Partial or None.</p>
+    <p class="sub">Select a health plan to update or start data transfer, then record the member's choice for each plan: All information, All except sensitive information or No information.</p>
 
     <div class="dd ${state.ddOpen?'open':''}" data-tour="transfer-picker">
       <div class="dd-head" data-action="dd-toggle">
@@ -810,6 +828,7 @@ function viewTransfer(){
     <div class="muted-note">${esc(m.name)} can change this preference anytime before the transfer starts.<br/>
       Once a transfer starts, it can't be stopped — but ${esc(m.name)} will see the status before that happens.</div>
 
+    ${givenByField('transfer')}
     <div class="attest-row" data-tour="transfer-attest">
       <label class="chk">
         <input type="checkbox" ${state.transferAttest?'checked':''} data-action="transfer-attest" />
@@ -853,7 +872,7 @@ function viewPlanDetail(){
 function footnote(){
   return `<div class="footnote">Demonstration portal for Jefferson Health Plans customer-service training.
    Implements member data-sharing consent under CMS-0057 (CMS Interoperability &amp; Prior Authorization Final Rule):
-   Provider Access (opt-out; Full / Partial / None, default Partial) and Payer-to-Payer (opt-in; Full / Partial / None for each previous plan).
+   Provider Access (opt-out; All information / All except sensitive information / No information, default All except sensitive information) and Payer-to-Payer (opt-in; All information / All except sensitive information / No information for each previous plan).
    Purposes: ${PURPOSES}. No real member data is shown.</div>`;
 }
 
@@ -871,11 +890,17 @@ function modalPlanChoice(planId, choice){
              <li>Purposes: ${PURPOSES}</li></ul>`
       : `<p class="left" style="margin-top:14px">If this choice is saved:</p>
          <ul><li>We will not request new health data from this plan</li>
-             <li>Data already received remains unchanged</li></ul>`;
+             <li>Data already received remains unchanged</li></ul>
+         <div class="optout-warn left" data-warn="p2p"><b>Important</b>If the member chooses No information, Jefferson Health Plans will not request or access the member's previous health records, which may affect:
+           <ol><li>The care team's ability to understand the member's full medical history.</li>
+               <li>Continuity of care for ongoing treatments.</li>
+               <li>Detection of potential medication interactions or duplications.</li>
+               <li>Identification of gaps in the member's care.</li></ol></div>`;
   openModal(`<div class="modal" data-stop data-modal="plan-choice" role="dialog" aria-modal="true" aria-labelledby="pc-title">
     <h3 id="pc-title">Confirm ${L} for Payer-to-Payer data exchange</h3>
     <p>You are about to set the member's choice for<br/><b>Health Plan: ${esc(p.name)}</b> to <b>${L}</b>.</p>
     ${body}
+    ${givenByField('plan')}
     <div style="margin-top:18px;font-weight:600;color:#2b303b">Admin Attestation (Required)</div>
     <label class="chk attest"><input type="checkbox" id="plan-attest" /><span class="box">${ICON.check}</span>
       <span>${esc(attestText(choice))}</span></label>
@@ -987,7 +1012,7 @@ document.addEventListener('click', e=>{
       const sel=state.transferSel;
       if(!(state.transferAttest && sel.length && sel.every(n=>state.transferChoice[n]))) break;
       if(sel.every(n=>state.transferChoice[n]==='none')){
-        // nothing to request: record the None choices directly
+        // nothing to request: record the No information choices directly
         const names=[...sel], ch={...state.transferChoice};
         applyTransfer(member(), names, ch);
         resetProfileDrafts(); go('profile'); transferToast(names, ch);
@@ -1025,7 +1050,8 @@ document.addEventListener('click', e=>{
       if(p) setPlanChoice(p, choice);
       delete state.planDraft[id];
       closeModal(); render();
-      toast('Consent updated', `${p?p.name:'Plan'} is now ${CHOICE_LABEL[choice].toUpperCase()}.`, choice==='none'?'red':'');
+      state.givenBy='Member';
+      toast('Consent updated', `${p?p.name:'Plan'} is now ${CHOICE_LABEL[choice]}.`, choice==='none'?'red':'');
       break;
     }
 
@@ -1045,6 +1071,7 @@ document.addEventListener('change', e=>{
   }
   const t=e.target.closest('[data-action]'); if(!t) return;
   const a=t.dataset.action;
+  if(a==='given-by'){ state.givenBy=t.value; return; }
   if(a==='provider-attest'){ state.providerAttest=t.checked; render(); refocus('[data-action="provider-attest"]'); }
   if(a==='transfer-attest'){ state.transferAttest=t.checked; render(); refocus('[data-action="transfer-attest"]'); }
   // a new choice clears the attestation, so the rep attests the choice actually being saved
@@ -1065,7 +1092,7 @@ function liveSearchUpdate(){
   if(isSearch){ const el=document.getElementById('m-search'); if(el){ el.focus(); try{el.setSelectionRange(pos,pos);}catch(_){} } }
 }
 
-function resetProfileDrafts(){ state.reviewOpen=null; state.planSearch=''; state.planDraft={}; state.providerDraft=null; state.providerAttest=false; state.ddOpen=false; state.transferSel=[]; state.transferChoice={}; state.transferAttest=false; }
+function resetProfileDrafts(){ state.givenBy='Member'; state.reviewOpen=null; state.planSearch=''; state.planDraft={}; state.providerDraft=null; state.providerAttest=false; state.ddOpen=false; state.transferSel=[]; state.transferChoice={}; state.transferAttest=false; }
 function today(){ const d=new Date(); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); }
 
 /* ---------- Guided tour: three task walkthroughs ---------- */
@@ -1074,18 +1101,18 @@ function tourFreshJohn(){ MEMBERS['123456']=freshMembers()['123456']; }
 
 const TOUR = {
   active:false, flow:null, i:0,
-  labels:{ provider:'Provider Access', payer:'Payer-to-Payer', full:'Share everything (Full)' },
+  labels:{ provider:'Provider Access', payer:'Payer-to-Payer', full:'Share everything (All information)' },
   flows:{
     provider:[
       { setup(){ tourFreshJohn(); tourMember(); state.view='profile'; render(); },
         sel:'[data-tour="provider-consent"]', place:'bottom',
-        title:'Provider Access consent', body:'<b>Goal: change how this member shares data with providers, from Partial to None.</b><br>John Doe has never made a choice, so he is at the default, <b>Partial</b>: in-network providers see his data except behavioral health / substance use treatment and specially protected data. The rep opens this consent to change it.' },
+        title:'Provider Access consent', body:'<b>Goal: change how this member shares data with providers, from All except sensitive information to No information.</b><br>John Doe has never made a choice, so he is at the default, <b>All except sensitive information</b>: in-network providers see his data except behavioral health / substance use treatment and specially protected data. The rep opens this consent to change it.' },
       { setup(){ tourFreshJohn(); tourMember(); state.view='provider'; render(); },
         sel:'[data-tour="provider-choices"]', place:'bottom',
-        title:'Step 1 — Review the current choice', body:'The screen shows the three choices. <b>Partial</b> is selected because it is the default. The purposes are treatment, payment and operations.' },
+        title:'Step 1 — Review the current choice', body:'The screen shows the three choices. <b>All except sensitive information</b> is selected because it is the default. The purposes are treatment, payment and operations.' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='none'; state.view='provider'; render(); },
         sel:'[data-tour="provider-choices"]', place:'bottom',
-        title:'Step 2 — Select None', body:'The member asks to stop sharing. The rep selects <b>None</b>: Jefferson Health Plans will not share the member&rsquo;s data with providers through Provider Access.' },
+        title:'Step 2 — Select No information', body:'The member asks to stop sharing. The rep selects <b>No information</b>: Jefferson Health Plans will not share the member&rsquo;s data with providers through Provider Access.' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='none'; state.providerAttest=false; state.view='provider'; render(); },
         sel:'[data-tour="provider-attest"]', place:'top',
         title:'Step 3 — Attest the request', body:'Every consent change requires the rep to confirm the member explicitly requested it during this interaction. The rep checks this attestation box.' },
@@ -1094,12 +1121,12 @@ const TOUR = {
         title:'Step 4 — Confirm', body:'With the attestation checked, the <b>Confirm</b> button activates. Clicking it saves the new choice.' },
       { setup(){ tourFreshJohn(); setProviderChoice(MEMBERS['123456'],'none'); tourMember(); state.view='profile'; render(); providerToast('none'); },
         sel:'[data-tour="provider-consent"]', place:'bottom',
-        title:'Done — sharing set to None', body:'The consent now shows <b>None</b> (red) and a confirmation appears. The change is added to the consent history with the date and &ldquo;Member services&rdquo;. The member can change the choice again at any time.' }
+        title:'Done — sharing set to No information', body:'The consent now shows <b>No information</b> (red) and a confirmation appears. The change is added to the consent history with the date and &ldquo;Member services&rdquo;. The member can change the choice again at any time.' }
     ],
     payer:[
       { setup(){ tourFreshJohn(); tourMember(); state.view='profile'; render(); },
         sel:'[data-tour="transfer-consent"]', place:'top',
-        title:'Payer-to-Payer consent', body:'<b>Goal: request this member&rsquo;s records from a previous health plan.</b><br>Unlike Provider Access, nothing is requested by default: the member makes a choice for each previous plan (Full, Partial or None). The rep starts a new data transfer.' },
+        title:'Payer-to-Payer consent', body:'<b>Goal: request this member&rsquo;s records from a previous health plan.</b><br>Unlike Provider Access, nothing is requested by default: the member makes a choice for each previous plan (All information, All except sensitive information or No information). The rep starts a new data transfer.' },
       { setup(){ tourFreshJohn(); tourMember(); Object.assign(state,{ddOpen:true,transferSel:[],view:'transfer'}); render(); },
         sel:'[data-tour="transfer-picker"]', place:'bottom',
         title:'Step 1 — Choose the prior plan', body:'On the transfer screen the rep selects which previous health plan(s) to request the member&rsquo;s records from.' },
@@ -1108,10 +1135,10 @@ const TOUR = {
         title:'Step 2 — Plan selected', body:'Here we&rsquo;ve selected <b>Humana</b>. More than one plan can be added if the member was covered by several; each plan gets its own choice.' },
       { setup(){ tourFreshJohn(); tourMember(); Object.assign(state,{ddOpen:false,transferSel:['Humana'],view:'transfer'}); render(); },
         sel:'[data-tour="transfer-choices"]', place:'bottom',
-        title:'Step 3 — Ask the member what to request', body:'There is no default. <b>Full</b> requests all data, including behavioral health / substance use treatment and specially protected data. <b>Partial</b> requests all data except those. <b>None</b> means do not request.' },
+        title:'Step 3 — Ask the member what to request', body:'There is no default. <b>All information</b> requests all data, including behavioral health / substance use treatment and specially protected data. <b>All except sensitive information</b> requests all data except those. <b>No information</b> means do not request.' },
       { setup(){ tourFreshJohn(); tourMember(); Object.assign(state,{ddOpen:false,transferSel:['Humana'],transferChoice:{Humana:'partial'},view:'transfer'}); render(); },
         sel:'[data-tour="transfer-choices"]', place:'bottom',
-        title:'Step 4 — Member chooses Partial', body:'The member asks for <b>Partial</b>. If the member asks for <b>Full</b>, the screen shows consent text the rep reads aloud first (see walkthrough 3).' },
+        title:'Step 4 — Member chooses All except sensitive information', body:'The member asks for <b>All except sensitive information</b>. If the member asks for <b>All information</b>, the screen shows consent text the rep reads aloud first (see walkthrough 3).' },
       { setup(){ tourFreshJohn(); tourMember(); Object.assign(state,{ddOpen:false,transferSel:['Humana'],transferChoice:{Humana:'partial'},transferAttest:false,view:'transfer'}); render(); },
         sel:'[data-tour="transfer-attest"]', place:'top',
         title:'Step 5 — Attest the request', body:'As with any consent change, the rep attests that the member explicitly requested this choice during this interaction.' },
@@ -1123,33 +1150,33 @@ const TOUR = {
         title:'Request submitted', body:'JHP confirms the request with a reference ID and the choice recorded for each plan. The prior plan is contacted securely and the data exchange completes within 24 hours.' },
       { setup(){ tourFreshJohn(); applyTransfer(MEMBERS['123456'],['Humana'],{Humana:'partial'}); tourMember(); state.view='profile'; render(); transferToast(['Humana'],{Humana:'partial'}); },
         sel:'.plan-card[data-plan-name="Humana"]', place:'top',
-        title:'Done — Humana set to Partial', body:'Humana now appears under <b>Partial</b> in Manage member consents. Its consent history records the choice, the date and &ldquo;Member services&rdquo;. That completes the flow.' }
+        title:'Done — Humana set to All except sensitive information', body:'Humana now appears under <b>All except sensitive information</b> in Manage member consents. Its consent history records the choice, the date and &ldquo;Member services&rdquo;. That completes the flow.' }
     ],
     full:[
       { setup(){ tourFreshJohn(); tourMember(); state.view='profile'; render(); },
         sel:'[data-tour="provider-consent"]', place:'bottom',
-        title:'Member asks to share everything', body:'<b>Goal: change Provider Access from Partial to Full.</b><br>Full shares all data, including behavioral health / substance use treatment and specially protected data. It needs an active, informed choice: the rep reads the consent text to the member first.' },
+        title:'Member asks to share everything', body:'<b>Goal: change Provider Access from All except sensitive information to All information.</b><br>All information shares all data, including behavioral health / substance use treatment and specially protected data. It needs an active, informed choice: the rep reads the consent text to the member first.' },
       { setup(){ tourFreshJohn(); tourMember(); state.view='provider'; render(); },
         sel:'[data-tour="provider-choices"]', place:'bottom',
-        title:'Step 1 — Review the current choice', body:'John Doe has never chosen, so he is at the default, <b>Partial</b>.' },
+        title:'Step 1 — Review the current choice', body:'John Doe has never chosen, so he is at the default, <b>All except sensitive information</b>.' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='full'; state.view='provider'; render(); },
         sel:'[data-tour="provider-choices"]', place:'bottom',
-        title:'Step 2 — Select Full', body:'The rep selects <b>Full</b>. The screen now shows the text the rep must read to the member before confirming.' },
+        title:'Step 2 — Select All information', body:'The rep selects <b>All information</b>. The screen now shows the text the rep must read to the member before confirming.' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='full'; state.view='provider'; render(); },
         sel:'[data-tour="readout-text"]', place:'top',
-        title:'Step 3 — Read the consent text', body:'The rep reads this to the member: what Full shares, with whom, and for which purposes (treatment, payment and operations).' },
+        title:'Step 3 — Read the consent text', body:'The rep reads this to the member: what All information shares, with whom, and for which purposes (treatment, payment and operations).' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='full'; state.view='provider'; render(); },
         sel:'[data-tour="readout-notice"]', place:'top',
         title:'Step 4 — Read the state law notice', body:'Some information has extra protection under state law: HIV-related information, and genetic information for New Jersey members. The rep reads this notice so the member knows that information is shared only with the provider&rsquo;s separate written permission.' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='full'; state.providerAttest=false; state.view='provider'; render(); },
         sel:'[data-tour="provider-attest"]', place:'top',
-        title:'Step 5 — Attest the request', body:'The attestation confirms the member explicitly asked for Full during this interaction, after the rep read the consent text.' },
+        title:'Step 5 — Attest the request', body:'The attestation confirms the member explicitly asked for All information during this interaction, after the rep read the consent text.' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='full'; state.providerAttest=true; state.view='provider'; render(); },
         sel:'[data-tour="provider-confirm"]', place:'top',
-        title:'Step 6 — Confirm', body:'With the attestation checked, <b>Confirm</b> saves the Full choice.' },
+        title:'Step 6 — Confirm', body:'With the attestation checked, <b>Confirm</b> saves the All information choice.' },
       { setup(){ tourFreshJohn(); setProviderChoice(MEMBERS['123456'],'full'); tourMember(); state.view='profile'; render(); providerToast('full'); },
         sel:'[data-tour="provider-consent"]', place:'bottom',
-        title:'Done — sharing set to Full', body:'The consent now shows <b>Full</b> (green) and a confirmation appears. The consent history records the choice, the date and &ldquo;Member services&rdquo;. The member can change it at any time.' }
+        title:'Done — sharing set to All information', body:'The consent now shows <b>All information</b> (green) and a confirmation appears. The consent history records the choice, the date and &ldquo;Member services&rdquo;. The member can change it at any time.' }
     ]
   },
   start(){ this.active=true; this.flow=null; this.i=0; this.intro(); },
@@ -1161,9 +1188,9 @@ const TOUR = {
         <div class="tour-tip-head"><strong>Guided walkthroughs</strong><button class="tour-x" data-action="tour-end" aria-label="Close">&times;</button></div>
         <p>Step through a complete consent task the way a rep would. Pick a flow:</p>
         <div class="tour-choices">
-          <button class="tour-choice" data-action="tour-flow" data-flow="provider"><b>1 · Change Provider Access sharing</b><span>Move a member from Partial (the default) to None.</span></button>
-          <button class="tour-choice" data-action="tour-flow" data-flow="payer"><b>2 · Payer-to-Payer data exchange</b><span>Request a member&rsquo;s records from a previous health plan, choosing Full or Partial.</span></button>
-          <button class="tour-choice" data-action="tour-flow" data-flow="full"><b>3 · Member asks to share everything (Full)</b><span>Move Provider Access from Partial to Full, reading the consent text and the state notice.</span></button>
+          <button class="tour-choice" data-action="tour-flow" data-flow="provider"><b>1 · Change Provider Access sharing</b><span>Move a member from All except sensitive information (the default) to No information.</span></button>
+          <button class="tour-choice" data-action="tour-flow" data-flow="payer"><b>2 · Payer-to-Payer data exchange</b><span>Request a member&rsquo;s records from a previous health plan, choosing All information or All except sensitive information.</span></button>
+          <button class="tour-choice" data-action="tour-flow" data-flow="full"><b>3 · Member asks to share everything (All information)</b><span>Move Provider Access from All except sensitive information to All information, reading the consent text and the state notice.</span></button>
         </div>
       </div>`;
   },
