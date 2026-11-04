@@ -1113,7 +1113,7 @@ const TOUR = {
         title:'Provider Access consent', body:'<b>Goal: change how this member shares data with providers, from All except sensitive information to No information.</b><br>John Doe has never made a choice, so he is at the default, <b>All except sensitive information</b>: in-network providers see his data except behavioral health / substance use treatment and specially protected data. The rep opens this consent to change it.' },
       { setup(){ tourFreshJohn(); tourMember(); state.view='provider'; render(); },
         sel:'[data-tour="provider-choices"]', place:'bottom',
-        title:'Step 1 — Review the current choice', body:'The screen shows the three choices. <b>All except sensitive information</b> is selected because it is the default. The purposes are treatment, payment and operations.' },
+        title:'Step 1 — Review the current choice', body:'The screen shows the three choices. <b>All except sensitive information</b> is selected because it is the default. The purposes are treatment and health care operations.' },
       { setup(){ tourFreshJohn(); tourMember(); state.providerDraft='none'; state.view='provider'; render(); },
         sel:'[data-tour="provider-choices"]', place:'bottom',
         title:'Step 2 — Select No information', body:'The member asks to stop sharing. The rep selects <b>No information</b>: Jefferson Health Plans will not share the member&rsquo;s data with providers through Provider Access.' },
