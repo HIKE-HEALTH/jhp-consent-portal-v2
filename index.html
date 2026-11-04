@@ -388,13 +388,14 @@ const CHOICE_DESC = {
 };
 /* State carve-out notice, read out with Full. Starting language; the plan's language owners will refine it. */
 const STATE_NOTICE = {
-  provider:'If you choose Full, we will share all of your health information, including behavioral health and substance use treatment records. Some information has extra protection under state law: HIV-related information, and for New Jersey members genetic information. We share that only when your provider gives us your separate written permission for it.',
-  p2p:'If you choose Full, we will request all of your health information from your previous plan, including behavioral health and substance use treatment records. Some information has extra protection under state law: HIV-related information, and for New Jersey members genetic information. We share that information with others only when your provider gives us your separate written permission for it.'
+  provider:'One more thing: some information also has extra protection under state law. This is HIV-related information, and for New Jersey members, genetic information. We share that information only if your provider sends us your separate written permission.',
+  p2p:'One more thing: some information also has extra protection under state law. This is HIV-related information, and for New Jersey members, genetic information. We share that information with others only if your provider sends us your separate written permission.'
 };
+/* Read-aloud consent text for Full: short sentences a member services rep can read on the phone. */
 function fullConsentText(kind, planName){
   return kind==='provider'
-    ? `By choosing Full, you allow Jefferson Health Plans to share all of your health information with the in-network providers involved in your care, for ${PURPOSES}. This includes behavioral health and substance use treatment records protected by federal law (42 CFR Part 2) and other specially protected information. You can change this choice at any time.`
-    : `By choosing Full, you allow Jefferson Health Plans to request all of your health information from ${planName||'your previous health plan'}, for ${PURPOSES}. This includes behavioral health and substance use treatment records protected by federal law (42 CFR Part 2) and other specially protected information. You can change this choice at any time.`;
+    ? `You are choosing Full. Jefferson Health Plans will share all of your health information with the in-network providers involved in your care. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We share this information only for ${PURPOSES}. You can change your choice at any time.`
+    : `You are choosing Full. Jefferson Health Plans will ask ${planName||'your previous health plan'} for all of your health information. This includes your behavioral health and substance use treatment records, which have extra protection under federal law. We use this information only for ${PURPOSES}. You can change your choice at any time.`;
 }
 
 /* ---------- Data ---------- */
