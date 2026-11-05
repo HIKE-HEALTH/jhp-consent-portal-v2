@@ -268,6 +268,11 @@
   .modal h3{margin:0 0 14px;font-size:20px;color:#2b303b;font-weight:800;line-height:1.35}
   .modal p{margin:0 0 10px;color:#4a515e;font-size:15px;line-height:1.55}
   .modal .left{text-align:left}
+  .modal .ap-field{display:grid;gap:6px;margin-top:14px;text-align:left}
+  .modal .ap-field label{font-weight:600;color:#2b303b;font-size:14px}
+  .modal .ap-field input{border:1px solid #d6dbe3;border-radius:8px;padding:9px 12px;font:inherit}
+  .modal .ap-field input:focus{outline:2px solid #1BB7FF;outline-offset:1px}
+  .modal fieldset.choices{margin-top:14px;text-align:left}
   .modal ul{text-align:left;color:#4a515e;font-size:15px;line-height:1.7;margin:6px 0 0;padding-left:20px}
   .modal .attest{margin:20px 0 8px;justify-content:center}
   .modal .modal-actions{display:flex;gap:14px;justify-content:center;margin-top:24px}
@@ -376,10 +381,10 @@ const ICON = {
      or 'not-asked' (no default) or 'expired'.
    Every change appends { choice, date, by } to that consent's history. */
 const CHOICES = ['full','partial','none'];
-const CHOICE_LABEL = { full:'All information', partial:'All except sensitive information', none:'No information', 'not-asked':'Not asked', expired:'Expired' };
-const CHOICE_DOT   = { full:'green', partial:'blue', none:'red', 'not-asked':'grey', expired:'amber' };
+const CHOICE_LABEL = { full:'All information', partial:'All except sensitive information', none:'No information', 'not-asked':'Not asked', expired:'Expired', review:'Waiting for review' };
+const CHOICE_DOT   = { full:'green', partial:'blue', none:'red', 'not-asked':'grey', expired:'amber', review:'amber' };
 const DOT_HEX      = { green:'#2fb24a', blue:'#2b62b8', red:'#df322e', grey:'#9aa0ab', amber:'#c98a00' };
-const P2P_GROUPS   = ['full','partial','none','not-asked','expired'];
+const P2P_GROUPS   = ['review','full','partial','none','not-asked','expired'];
 const PURPOSES = 'treatment and health care operations';        // K 11-04: no payment purpose (both provisions)
 const PURPOSES_P2P = PURPOSES;
 const CAPTURED_BY = 'Member services';
@@ -721,7 +726,20 @@ function viewProfile(){
   `);
 }
 
+/* a plan the rep asked Interoperability to add: the member's choice is held until the plan is added */
+function reviewCard(p){
+  return `<div class="plan-card" data-plan-id="${p.id}" data-plan-name="${esc(p.name)}" data-group="review">
+    <div class="head"><span class="pname">${esc(p.name)}</span>${pill('review')}</div>
+    <div class="plan-detail"><table class="detail-table">
+      <tr><td class="k">Choice to apply when added</td><td class="v">${pill(p.pendingChoice)}</td></tr>
+      <tr><td class="k">Member ID at this plan</td><td class="v">${esc(p.memberRef)}</td></tr>
+      <tr><td class="k">Requested on</td><td class="v">${esc(p.chosen)}</td></tr>
+      <tr><td class="k">Status</td><td class="v">Waiting for Interoperability review. Nothing is requested until the plan is added.</td></tr>
+    </table></div>
+  </div>`;
+}
 function planCard(p){
+  if(p.group==='review') return reviewCard(p);
   const open = state.reviewOpen===p.id;
   let detail='';
   if(open){
@@ -827,7 +845,7 @@ function viewTransfer(){
         + (state.transferChoice[nm]==='full' ? readout('p2p', nm) : '')).join('')}
     </div>` : ''}
 
-    <p class="helper">Don't see the requested health plan? To add another health plan, please
+    <p class="helper" data-tour="add-plan">Don't see the requested health plan? To add another health plan, please
       <a href="#" data-action="add-plan">click here.</a> It will be reviewed before requesting any data.</p>
     <div class="muted-note">${esc(m.name)} can change this preference anytime before the transfer starts.<br/>
       Once a transfer starts, it can't be stopped — but ${esc(m.name)} will see the status before that happens.</div>
@@ -913,6 +931,45 @@ function modalPlanChoice(planId, choice){
       <button class="btn btn-disabled btn-sm" id="plan-confirm" data-action="plan-confirm" data-id="${planId}" data-choice="${choice}" disabled>Confirm ${L}</button>
     </div>
   </div>`);
+}
+/* "click here": request a plan that is not in the list. Interoperability reviews it; the member's choice is held until then. */
+function modalAddPlan(){
+  const opts = ['full','partial'].map(c=>`<label class="choice"><input type="radio" name="ap-choice" value="${c}" />
+      <span><span class="cn">${CHOICE_LABEL[c]}</span><span class="cd">${esc(CHOICE_DESC.p2p[c])}</span></span></label>`).join('');
+  openModal(`<div class="modal" data-stop data-modal="add-plan" role="dialog" aria-modal="true" aria-labelledby="ap-title">
+    <h3 id="ap-title">Request a health plan to be added</h3>
+    <p class="left">Use this when the member's previous or other current health plan is not in the list. The Interoperability team reviews the plan before it is added. Nothing is requested from the plan until then.</p>
+    <div class="ap-field"><label for="ap-name">Health plan</label><input id="ap-name" autocomplete="off" placeholder="Name of the health plan" /></div>
+    <div class="ap-field"><label for="ap-member">Member ID at that plan</label><input id="ap-member" autocomplete="off" placeholder="From the member's card for that plan" /></div>
+    <fieldset class="choices"><legend>What should we request once the plan is added?</legend>${opts}</fieldset>
+    <div id="ap-readout" hidden>${readout('p2p','this plan')}</div>
+    ${givenByField('addplan')}
+    <div style="margin-top:18px;font-weight:600;color:#2b303b">Admin Attestation (Required)</div>
+    <label class="chk attest"><input type="checkbox" id="ap-attest" /><span class="box">${ICON.check}</span>
+      <span>I confirm that the member explicitly requested this during this interaction.</span></label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" data-action="close-modal">Cancel</button>
+      <button class="btn btn-disabled btn-sm" id="ap-submit" data-action="ap-submit" disabled>Send for review</button>
+    </div>
+  </div>`);
+}
+function addPlanReady(){
+  const name=(document.getElementById('ap-name')||{}).value||'', mem=(document.getElementById('ap-member')||{}).value||'';
+  const ch=document.querySelector('input[name="ap-choice"]:checked'), at=document.getElementById('ap-attest');
+  const ro=document.getElementById('ap-readout'); if(ro) ro.hidden = !(ch && ch.value==='full');
+  const ok = name.trim() && mem.trim() && ch && at && at.checked;
+  const btn=document.getElementById('ap-submit');
+  if(btn){ btn.disabled=!ok; btn.classList.toggle('btn-disabled',!ok); btn.classList.toggle('btn-primary',!!ok); }
+  return ok ? { name:name.trim(), member:mem.trim(), choice:ch.value } : null;
+}
+function submitAddPlan(){
+  const r=addPlanReady(); if(!r) return;
+  const m=member();
+  m.plans.push({ id:'p'+(++PLAN_SEQ)+'-'+Date.now(), name:r.name, group:'review', pendingChoice:r.choice, memberRef:r.member,
+    chosen:today(), transfer:'—', status:'Not started', history:[hist(r.choice,today(),state.givenBy)] });
+  closeModal(); state.givenBy='Member';
+  Object.assign(state,{ddOpen:false,transferSel:[],transferChoice:{},transferAttest:false}); go('profile');
+  toast('Sent for review', `${r.name}: ${CHOICE_LABEL[r.choice]} will be requested once the Interoperability team adds the plan. Nothing is requested until then.`);
 }
 function modalTransferSubmitted(ref){
   const sel=state.transferSel, ch=state.transferChoice;
@@ -1011,7 +1068,8 @@ document.addEventListener('click', e=>{
       state.transferAttest=false; render(); break;
     }
     case 'chip-remove': { const i=state.transferSel.indexOf(name); if(i>=0) state.transferSel.splice(i,1); delete state.transferChoice[name]; state.transferAttest=false; render(); break; }
-    case 'add-plan': e.preventDefault(); toast('Request noted','Adding a new plan would be sent for review.'); break;
+    case 'add-plan': e.preventDefault(); modalAddPlan(); break;
+    case 'ap-submit': submitAddPlan(); break;
     case 'transfer-continue': {
       const sel=state.transferSel;
       if(!(state.transferAttest && sel.length && sel.every(n=>state.transferChoice[n]))) break;
@@ -1068,6 +1126,7 @@ document.addEventListener('click', e=>{
 /* checkbox / radio change handling */
 function refocus(selector){ const el=document.querySelector(selector); if(el){ try{ el.focus({preventScroll:true}); }catch(_){ el.focus(); } } }
 document.addEventListener('change', e=>{
+  if(e.target.id==='ap-attest' || e.target.name==='ap-choice'){ addPlanReady(); return; }
   if(e.target.id==='plan-attest'){
     const btn=document.getElementById('plan-confirm');
     if(btn){ btn.disabled=!e.target.checked; btn.classList.toggle('btn-disabled',!e.target.checked); btn.classList.toggle('btn-primary',e.target.checked); }
@@ -1086,6 +1145,7 @@ document.addEventListener('change', e=>{
 
 /* live filtering as you type on member search */
 document.addEventListener('input', e=>{
+  if(e.target.id==='ap-name' || e.target.id==='ap-member'){ addPlanReady(); return; }
   if(e.target.id==='m-search'){ state.search=e.target.value; state.searchSubmitted = e.target.value.trim().length>0; liveSearchUpdate(); }
 });
 function liveSearchUpdate(){
@@ -1137,6 +1197,9 @@ const TOUR = {
       { setup(){ tourFreshJohn(); tourMember(); Object.assign(state,{ddOpen:true,transferSel:['Humana'],view:'transfer'}); render(); },
         sel:'[data-tour="transfer-picker"]', place:'bottom',
         title:'Step 2 — Plan selected', body:'Here we&rsquo;ve selected <b>Humana</b>. More than one plan can be added if the member was covered by several; each plan gets its own choice.' },
+      { setup(){ tourFreshJohn(); tourMember(); Object.assign(state,{ddOpen:false,transferSel:['Humana'],view:'transfer'}); render(); },
+        sel:'[data-tour="add-plan"]', place:'top',
+        title:'If the plan is not in the list', body:'Select <b>click here</b>. Enter the plan&rsquo;s name and the member&rsquo;s ID at that plan, and record what the member wants requested. The Interoperability team reviews the plan first; nothing is requested until it is added, and then the member&rsquo;s choice is used. Until then the plan shows as <b>Waiting for review</b>.' },
       { setup(){ tourFreshJohn(); tourMember(); Object.assign(state,{ddOpen:false,transferSel:['Humana'],view:'transfer'}); render(); },
         sel:'[data-tour="transfer-choices"]', place:'bottom',
         title:'Step 3 — Ask the member what to request', body:'There is no default. <b>All information</b> requests all data, including behavioral health / substance use treatment and specially protected data. <b>All except sensitive information</b> requests all data except those. <b>No information</b> means do not request.' },
