@@ -233,10 +233,12 @@
   .given-by .gb-pick{display:flex;flex-direction:column;gap:6px;padding-left:2px}
   .given-by .gb-help{font-size:13px;color:#6b7280}
   .given-by .gb-none{font-size:14px;color:#6b7280}
-  .given-by .gb-request{font-size:14px;color:#0b6bcb;text-decoration:underline}
+  .given-by .gb-oob{background:#fff7e6;border:1px solid #f0c36d;border-radius:8px;padding:10px 14px;font-size:14px;color:#2c3340;max-width:640px}
+  .given-by .gb-oob b{display:block;margin-bottom:4px}
+  .given-by .gb-oob p{margin:0 0 4px}
+  .given-by .gb-oob ol{margin:0;padding-left:20px}
   .given-by .gb-err{font-size:14px;color:#b42318;max-width:640px}
   .modal .given-by{align-items:center}
-  .pr-pending{background:#fff7e6;border:1px solid #f0c36d;border-radius:8px;padding:10px 14px;margin:14px 0;font-size:14px;color:#2c3340}
   .form-actions{display:flex;gap:14px;align-items:center}
 
   /* dropdown multiselect */
@@ -437,7 +439,6 @@ function freshMembers(){
       linked:[ { id:'rp-jane',  kind:'related', name:'Jane Doe',     rel:'Spouse, same coverage' },
                { id:'rp-jimmy', kind:'related', name:'Jimmy Doe',    rel:'Son, same coverage' },
                { id:'pr-robert',kind:'pr',      name:'Robert Miles', rel:'Power of attorney' } ],
-      prRequests:[],
       plans:[
         { id:'aetna',   name:'Aetna',   group:'full',      chosen:'May 5, 2025', transfer:'May 7, 2025', status:'Completed',   history:[hist('full','May 5, 2025')] },
         { id:'cigna',   name:'Cigna',   group:'partial',   chosen:'May 5, 2025', transfer:'May 7, 2025', status:'Completed',   history:[hist('partial','May 5, 2025')] },
@@ -450,7 +451,7 @@ function freshMembers(){
       id:'456789', name:'Sarah Brown', first:'Sarah', poss:'her', subj:'she',
       phone:'(609) 555-0188', dob:'12/15/1970', email:'sarah.brown@gmail.com',
       provider:{ status:'none', chosen:true, history:[hist('none','Feb 10, 2025')] },
-      linked:[], prRequests:[],
+      linked:[],
       plans:[
         { id:'humana',  name:'Humana',  group:'full',    chosen:'Mar 3, 2025', transfer:'Mar 5, 2025', status:'Completed', history:[hist('full','Mar 3, 2025')] },
         { id:'aetna2',  name:'Aetna',   group:'partial', chosen:'Feb 1, 2025', transfer:'Feb 3, 2025', status:'Completed', history:[hist('partial','Feb 1, 2025')] }
@@ -540,7 +541,11 @@ function givenByPicker(id){
     ? `<label for="gb-person-${id}">${what}</label>
        <select id="gb-person-${id}" data-action="given-by-person"><option value="">Select…</option>${people.map(p=>`<option value="${p.id}" ${state.givenById===p.id?'selected':''}>${esc(p.name)} (${esc(p.rel)})</option>`).join('')}</select>`
     : `<span class="gb-none">${kind==='pr' ? 'No personal representative is set up for this member.' : 'No related person is on this member’s coverage.'}</span>`;
-  const req = kind==='pr' ? `<a href="#" class="gb-request" data-action="pr-request" data-tour="pr-request-link">Not in the list? Request a personal representative</a>` : '';
+  const req = kind==='pr' ? `<div class="gb-oob" data-tour="pr-oob" role="note"><b>Not in the list?</b><p>Don't change the consent yet.</p><ol>
+    <li>Verify their authority using JHP's existing process (for example, a power of attorney).</li>
+    <li>Record their first name, last name, date of birth, email and phone, and the change they are asking for.</li>
+    <li>Open an internal ticket to the Interoperability team to create them.</li>
+    <li>Tell the caller they will be contacted with their details, and the change will be made then.</li></ol></div>` : '';
   return `<div class="gb-list">${list}</div><div class="gb-help">${esc(help)}</div>${req}`;
 }
 /* who gave the preference (the member, or someone acting for them; a non-member must be picked from the linked people) */
@@ -550,7 +555,7 @@ function givenByField(id){
     <div class="gb-row"><label for="given-by-${id}">Preference given by</label>
     <select id="given-by-${id}" data-action="given-by">${GIVEN_BY.map(g=>`<option ${state.givenBy===g?'selected':''}>${esc(g)}</option>`).join('')}</select></div>
     <div class="gb-pick" data-tour="given-by-pick" ${kind?'':'hidden'}>${givenByPicker(id)}</div>
-    <div class="gb-err" role="alert" hidden>Select who is calling from the list before you save. If a personal representative is not in the list, request them instead: the consent is not changed until they are set up.</div>
+    <div class="gb-err" role="alert" hidden>Select who is calling from the list before you save. If a personal representative is not in the list, don't change the consent yet: follow the steps under the list.</div>
   </div>`;
 }
 /* blocks a save while a non-member is chosen but no person is picked; returns true when blocked */
@@ -734,7 +739,6 @@ function viewProfile(){
       </div>
     </div>
 
-    ${(m.prRequests||[]).map(r=>`<div class="pr-pending" data-tour="pr-pending"><b>Personal representative requested:</b> ${esc(r.name)} (${esc(r.auth)}), ticket ${esc(r.ticket)}, ${esc(r.date)}. Waiting for the Interoperability team. Consent has not been changed; the requested change (${esc(r.consent)}: ${CHOICE_LABEL[r.choice]}) is made once they are set up.</div>`).join('')}
     <h2 class="section">Member consents</h2>
     <div class="consent-card" data-tour="provider-consent">
       <div class="ct">
@@ -1020,56 +1024,6 @@ function submitAddPlan(){
   Object.assign(state,{ddOpen:false,transferSel:[],transferChoice:{},transferAttest:false}); go('profile');
   toast('Sent for review', `${r.name}: ${CHOICE_LABEL[r.choice]} will be requested once the Interoperability team adds the plan. Nothing is requested until then.`);
 }
-/* "Not in the list? Request a personal representative": nothing changes in consent until the Interoperability team sets them up */
-function modalPrRequest(){
-  const consent = state.view==='provider' ? 'Provider Access' : 'Payer-to-Payer';
-  const opts = CHOICES.map(c=>`<label class="choice"><input type="radio" name="pr-choice" value="${c}" /><span><span class="cn">${CHOICE_LABEL[c]}</span></span></label>`).join('');
-  openModal(`<div class="modal" data-stop data-modal="pr-request" role="dialog" aria-modal="true" aria-labelledby="pr-title" data-consent="${consent}">
-    <h3 id="pr-title">Request a personal representative</h3>
-    <p class="left">Use this when the caller says they are ${esc(member().name)}'s personal representative but is not in the list. Verify their authority using JHP's existing process (for example, a power of attorney) first. The consent is <b>not changed</b> now: the Interoperability team sets the personal representative up, the caller is contacted with their details, and the change is made then.</p>
-    <div class="ap-field"><label for="pr-first">First name</label><input id="pr-first" autocomplete="off" /></div>
-    <div class="ap-field"><label for="pr-last">Last name</label><input id="pr-last" autocomplete="off" /></div>
-    <div class="ap-field"><label for="pr-dob">Date of birth</label><input id="pr-dob" autocomplete="off" placeholder="MM/DD/YYYY" /></div>
-    <div class="ap-field"><label for="pr-email">Email</label><input id="pr-email" autocomplete="off" type="email" /></div>
-    <div class="ap-field"><label for="pr-phone">Phone</label><input id="pr-phone" autocomplete="off" type="tel" /></div>
-    <div class="ap-field"><label for="pr-auth">Authority</label><select id="pr-auth"><option value="">Select…</option><option>Power of attorney</option><option>Court-appointed guardian</option><option>Executor</option><option>Other</option></select></div>
-    <fieldset class="choices"><legend>Change they are asking for (${esc(consent)})</legend>${opts}</fieldset>
-    <label class="chk attest"><input type="checkbox" id="pr-verified" /><span class="box">${ICON.check}</span>
-      <span>I verified their authority using JHP's process.</span></label>
-    <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" data-action="close-modal">Cancel</button>
-      <button class="btn btn-disabled btn-sm" id="pr-submit" data-action="pr-submit" disabled>Send to Interoperability</button>
-    </div>
-  </div>`);
-}
-function prRequestReady(){
-  const v=id=>((document.getElementById(id)||{}).value||'').trim();
-  const ch=document.querySelector('input[name="pr-choice"]:checked'), ver=document.getElementById('pr-verified');
-  const ok = v('pr-first') && v('pr-last') && v('pr-dob') && v('pr-email') && v('pr-phone') && v('pr-auth') && ch && ver && ver.checked;
-  const btn=document.getElementById('pr-submit');
-  if(btn){ btn.disabled=!ok; btn.classList.toggle('btn-disabled',!ok); btn.classList.toggle('btn-primary',!!ok); }
-  return ok ? { name:v('pr-first')+' '+v('pr-last'), auth:v('pr-auth'), choice:ch.value } : null;
-}
-function addPrRequest(m, r, consent){
-  const ticket='INT-'+Math.floor(1000+Math.random()*9000);
-  m.prRequests.push({ ...r, consent, ticket, date:today() });
-  return ticket;
-}
-function submitPrRequest(){
-  const r=prRequestReady(); if(!r) return;
-  const modal=document.querySelector('[data-modal="pr-request"]'); const consent=modal ? modal.dataset.consent : 'Provider Access';
-  const ticket=addPrRequest(member(), r, consent);
-  resetGivenBy();
-  openModal(`<div class="modal" data-stop data-modal="pr-requested">
-    <h3>Request sent</h3>
-    <p>Request sent to the Interoperability team, ticket <b class="refid">${esc(ticket)}</b>. Consent has not been changed. The caller will be contacted with their details.</p>
-    <p class="left" style="margin-top:14px">What to tell the caller :</p>
-    <ul><li>The Interoperability team will set them up as ${esc(member().name)}'s personal representative</li>
-        <li>They will be contacted with their details</li>
-        <li>The change they asked for (${esc(consent)}: ${CHOICE_LABEL[r.choice]}) is made then</li></ul>
-    <div class="modal-actions"><button class="btn btn-primary btn-sm" data-action="pr-done">Ok</button></div>
-  </div>`);
-}
 function modalTransferSubmitted(ref){
   const sel=state.transferSel, ch=state.transferChoice;
   openModal(`<div class="modal" data-stop data-modal="transfer-submitted">
@@ -1170,9 +1124,6 @@ document.addEventListener('click', e=>{
     case 'chip-remove': { const i=state.transferSel.indexOf(name); if(i>=0) state.transferSel.splice(i,1); delete state.transferChoice[name]; state.transferAttest=false; render(); break; }
     case 'add-plan': e.preventDefault(); modalAddPlan(); break;
     case 'ap-submit': submitAddPlan(); break;
-    case 'pr-request': e.preventDefault(); modalPrRequest(); break;
-    case 'pr-submit': submitPrRequest(); break;
-    case 'pr-done': closeModal(); render(); break;
     case 'transfer-continue': {
       const sel=state.transferSel;
       if(!(state.transferAttest && sel.length && sel.every(n=>state.transferChoice[n]))) break;
@@ -1247,7 +1198,6 @@ document.addEventListener('change', e=>{
     return;
   }
   if(a==='given-by-person'){ state.givenById=t.value||null; const box=t.closest('.given-by'); if(box) box.querySelectorAll('.gb-err').forEach(el=>{ el.hidden=true; }); return; }
-  if(e.target.name==='pr-choice' || e.target.id==='pr-verified' || e.target.id==='pr-auth'){ prRequestReady(); return; }
   if(a==='provider-attest'){ state.providerAttest=t.checked; render(); refocus('[data-action="provider-attest"]'); }
   if(a==='transfer-attest'){ state.transferAttest=t.checked; render(); refocus('[data-action="transfer-attest"]'); }
   // a new choice clears the attestation, so the rep attests the choice actually being saved
@@ -1259,7 +1209,6 @@ document.addEventListener('change', e=>{
 /* live filtering as you type on member search */
 document.addEventListener('input', e=>{
   if(e.target.id==='ap-name' || e.target.id==='ap-member'){ addPlanReady(); return; }
-  if(/^pr-(first|last|dob|email|phone)$/.test(e.target.id)){ prRequestReady(); return; }
   if(e.target.id==='m-search'){ state.search=e.target.value; state.searchSubmitted = e.target.value.trim().length>0; liveSearchUpdate(); }
 });
 function liveSearchUpdate(){
@@ -1308,12 +1257,12 @@ const TOUR = {
       { setup(){ tourFreshJohn(); tourMember(); resetGivenBy(); state.givenBy='Personal representative'; state.view='provider'; render(); },
         sel:'[data-tour="given-by"]', place:'top',
         title:'Step 2 — A personal representative', body:'If the caller says they are the member&rsquo;s <b>personal representative</b> (for example, with a power of attorney), select <b>Personal representative</b>. If they are in the list, select them and record the change.' },
-      { setup(){ tourFreshJohn(); tourMember(); resetGivenBy(); state.givenBy='Personal representative'; state.view='provider'; render(); modalPrRequest(); },
-        sel:'.modal', place:'bottom',
-        title:'Step 3 — Not in the list: request them', body:'Don&rsquo;t change the consent yet. Verify their authority using JHP&rsquo;s existing process, record their first name, last name, date of birth, email and phone and the change they are asking for, and send the request to the Interoperability team.' },
-      { setup(){ tourFreshJohn(); tourMember(); resetGivenBy(); addPrRequest(MEMBERS['123456'],{name:'Maria Lopez',auth:'Power of attorney',choice:'none'},'Provider Access'); state.view='profile'; render(); },
-        sel:'[data-tour="pr-pending"]', place:'bottom',
-        title:'Done — request sent, consent unchanged', body:'The request goes to the Interoperability team with a ticket number, and the consent stays as it was. Tell the caller they will be contacted with their details, and the change will be made then.' }
+      { setup(){ tourFreshJohn(); MEMBERS['123456'].linked=MEMBERS['123456'].linked.filter(p=>p.kind!=='pr'); tourMember(); resetGivenBy(); state.givenBy='Personal representative'; state.view='provider'; render(); },
+        sel:'[data-tour="pr-oob"]', place:'top',
+        title:'Step 3 — Not in the list: don\u2019t change the consent yet', body:'If the personal representative is not in the list, the consent is <b>not</b> changed on this call. Verify their authority using JHP&rsquo;s existing process (for example, a power of attorney), and record their first name, last name, date of birth, email and phone, and the change they are asking for.' },
+      { setup(){ tourFreshJohn(); MEMBERS['123456'].linked=MEMBERS['123456'].linked.filter(p=>p.kind!=='pr'); tourMember(); resetGivenBy(); state.givenBy='Personal representative'; state.view='provider'; render(); },
+        sel:'[data-tour="pr-oob"]', place:'top',
+        title:'Step 4 — Open the ticket and tell the caller', body:'Open an internal ticket to the Interoperability team to create them. Tell the caller they will be contacted with their details, and the change will be made then. This happens outside the consent portal.' }
     ],
     payer:[
       { setup(){ tourFreshJohn(); tourMember(); state.view='profile'; render(); },
